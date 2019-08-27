@@ -1,10 +1,10 @@
 
-# Multivariate ARIMA Forcasting On Magic: the Gathering, Median Card Prices
+# Multivariate ARIMA Forecasting On Magic: the Gathering, Median Card Prices
 An analysis of the effect of MTG tournaments on online card prices.
 ## - Christopher W. Evans, UMass Amherst Undergraduate
 
 For a better reading experience and all of the code:
-[https://github.com/ChrisWeldon/MTGForcasting](https://github.com/ChrisWeldon/MTGForcasting)
+[https://github.com/ChrisWeldon/MTGforecasting](https://github.com/ChrisWeldon/MTGForecasting)
 
 A note on the data:
 Surprising, at the time of this analysis, the complete dataset of pricing history does not exist. Chris Evans built the tools and collected all the data for this analysis. The data for this project is private. Eventually I will release the scrapers and the data csv's when I know for sure that this is not easily monetizable.
@@ -153,10 +153,10 @@ show_raw_and_prices('./data/ravnica-allegiance/godless-shrine')
 
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_6_1.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_6_1.png)
 
 
-## Forcasting Analysis
+## forecasting Analysis
 
 Firstly, we should load up the data on an example card to begin to outline the data prep process.
 
@@ -302,7 +302,7 @@ lag_plot(table['price_dollars'], lag=1)
 
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_15_1.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_15_1.png)
 
 This Correlation pretty much speaks for itself. This graph shows that y(t) is a really good predictor of the value of y(t+1). Athough, this graph might lead us to believe that a presistence model would perform well. We don't want our model to fit this correlation.
 
@@ -316,7 +316,7 @@ plt.show()
 ```
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_17_0.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_17_0.png)
 
 
 Fortunately, the first derivative does the trick:
@@ -329,7 +329,7 @@ plt.show()
 ```
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_19_0.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_19_0.png)
 
 
 *I didn't differentiate the 'raw_per_decks' feature because in this particular card, it is so sparse. I checked the autocorrelation down the line. As I suspected, it was pretty low given the nature of MTG card game.*
@@ -487,7 +487,7 @@ example_full_table.plot(figsize=(16,10))
 
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_31_1.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_31_1.png)
 
 
 Just a quick backfill to keep the table the same size after the rolling averages.
@@ -942,7 +942,7 @@ class PostImputer(BaseEstimator, TransformerMixin):
         return X.fillna(method='bfill')
 ```
 
-## Forcasting for Real This Time
+## forecasting for Real This Time
 
 So now a start fresh, only this time a little more compactly. This next step is just assembling the table to fit into pipeline.
 
@@ -993,7 +993,7 @@ y_4 = y.shift(-4).fillna(method='ffill')
 y_5 = y.shift(-5).fillna(method='ffill')
 ```
 
-I actually am not going to use these to train because hard coding like this is a pain to work with. Instead I will build a pipe to do the forcasting for me.
+I actually am not going to use these to train because hard coding like this is a pain to work with. Instead I will build a pipe to do the forecasting for me.
 
 
 ```python
@@ -1065,7 +1065,7 @@ plt.legend(['forcast',
 ```
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_64_0.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_64_0.png)
 
 
 Boom, there is your forcast overlayed with the actual. Looks pretty good so far.
@@ -1076,7 +1076,7 @@ I will explore these things later in the analysis:
  - Feature optimization
  - Monte Carlo simulation with a portfolio
  - Stochastic Gradient Descent with combined card datasets
- - Live forcasting
+ - Live forecasting
 
 
 ```python
@@ -1131,7 +1131,7 @@ plt.legend(['forcast',
 
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_67_1.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_67_1.png)
 
 
 
