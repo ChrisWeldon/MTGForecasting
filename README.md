@@ -3,6 +3,8 @@
 An analysis of the effect of MTG tournaments on online card prices.
 ## - Christopher W. Evans, UMass Amherst Undergraduate
 
+For a better reading experience and all of the code:
+[https://github.com/ChrisWeldon/MTGForcasting](https://github.com/ChrisWeldon/MTGForcasting)
 
 A note on the data:
 Surprising, at the time of this analysis, the complete dataset of pricing history does not exist. Chris Evans built the tools and collected all the data for this analysis. The data for this project is private. Eventually I will release the scrapers and the data csv's when I know for sure that this is not easily monetizable.
