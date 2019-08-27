@@ -4,7 +4,7 @@ An analysis of the effect of MTG tournaments on online card prices.
 ## - Christopher W. Evans, UMass Amherst Undergraduate
 
 
-A note on the data: 
+A note on the data:
 Surprising, at the time of this analysis, the complete dataset of pricing history does not exist. Chris Evans built the tools and collected all the data for this analysis. The data for this project is private. Eventually I will release the scrapers and the data csv's when I know for sure that this is not easily monetizable.
 
 
@@ -65,23 +65,23 @@ def load_occurances_grouped_date(path):
     card_manifest = load_manifest_data(path)
     occurances = load_occurance_data()
     card_occurances = occurances.loc[occurances['card']==card_manifest[0]]
-    
+
     card_occurances.loc[:,'datetime'] = pd.to_datetime(card_occurances['date'])
     card_occurances.set_index('datetime')
     card_occurances.loc[:,'raw_per_decks'] = card_occurances['raw']/card_occurances['deck_nums']
     card_occurances.loc[:,'total_first'] = card_occurances['1st Place']
-    
+
     card_occurances.loc[:,'scaled_placement'] = .5*(card_occurances['1st Place'] + card_occurances['2nd Place']) + .25*(card_occurances['3rd Place'] + card_occurances['4th Place']) + .13*(card_occurances['5th Place'] + card_occurances['6th Place'] + card_occurances['7th Place'] + card_occurances['8th Place'])
-    
-    
+
+
     card_occs_nums_only = card_occurances.drop('event', axis=1).drop('date_unix', axis=1).drop('card', axis=1)
     card_occs_stacked = card_occs_nums_only.groupby('datetime').sum().reset_index()
-    
+
 
     card_occs_stacked.loc[:,'raw_rolling'] = card_occs_stacked['raw_per_decks'].rolling(window=14).mean()
     card_occs_stacked.loc[:,'d_raw_rolling'] = card_occs_stacked['raw_rolling'].diff()
     card_occs_stacked.loc[:,'d_raw_per_decks'] = card_occs_stacked['raw_per_decks'].diff()
-    
+
     return card_occs_stacked
 
 def load_tournament_dates(path='./data/tournies.json'):
@@ -96,7 +96,7 @@ def load_tournament_dates(path='./data/tournies.json'):
         df['date'] = df['tourny_dates']
         df.set_index('date', inplace=True)
         return(df)
-    
+
 ```
 
 
@@ -113,9 +113,9 @@ def show_raw_and_prices(path):
     print(path.split('/')[-1])
     card = load_card_data(path)
     card_occurances = load_occurances_grouped_date(path)
-    
+
     #plot data
-    
+
     fig, ax = plt.subplots(figsize=(15,7))
     ax = card.plot(x='datetime', y='price_dollars', ax=ax)
     #ax = card.plot(x='datetime', y='d_price_dollars', ax=ax, style='--', color='blue')
@@ -126,7 +126,7 @@ def show_raw_and_prices(path):
     #ax = card_occurances.plot(x='datetime', y='3rd Place', ax=ax, style='.', alpha=.3, color='blue')
     ax = card_occurances.plot(x='datetime', y='raw_rolling', ax=ax, style='-', alpha=1, color='red')
     #ax = card_occurances.plot(x='datetime', y='d_raw_per_decks', ax=ax, style=':', alpha=1, color='red')
-    
+
     #set ticks every week
     ax.xaxis.set_major_locator(mdates.WeekdayLocator())
     #set major ticks format
@@ -138,7 +138,7 @@ def show_raw_and_prices(path):
 
 ## Multivariance
 
-Below is a graph of the two the main features that have been collected, the pricing history (Blue) and the occurances in tournaments (Orange and Red). I chose to add the rolling average of the occurance data (Red) because the occurance data is quite noisy and hard to read. 
+Below is a graph of the two the main features that have been collected, the pricing history (Blue) and the occurances in tournaments (Orange and Red). I chose to add the rolling average of the occurance data (Red) because the occurance data is quite noisy and hard to read.
 
 As you can see, the occurance data seems somewhat correlated with the price of the card overtime. The question is, can we leverage it to predicts gains/losses in the future?
 
@@ -151,7 +151,7 @@ show_raw_and_prices('./data/ravnica-allegiance/godless-shrine')
 
 
 
-![png](output_6_1.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_6_1.png)
 
 
 ## Forcasting Analysis
@@ -194,7 +194,7 @@ card_occurances_raw = card_occurances[['datetime', 'raw_per_decks']]
 
 table  = pd.merge(card,
                  card_occurances_raw[['datetime', 'raw_per_decks']],
-                 on='datetime', 
+                 on='datetime',
                  how='left')
 ```
 
@@ -278,7 +278,7 @@ table.iloc[100:105, :]
 
 ### So why d_price_dollars?
 
-This is pretty much the crux of the difference between VAR and ARIMA models. ARIMA stands for Auto Regression Integrated Moving Average. The differentiation is the 'Integrated' part. Think of it like this: price_dollars is the integral of d_price_dollars. 
+This is pretty much the crux of the difference between VAR and ARIMA models. ARIMA stands for Auto Regression Integrated Moving Average. The differentiation is the 'Integrated' part. Think of it like this: price_dollars is the integral of d_price_dollars.
 
 The reason why is we want to make sure that we distil the data down to the simplest usable form while also the mainting the ability to develop new datapoints as time moves forward without overlaped featuredata. This means that all features must be 'stationary', or in more simple terms, the datapoint should not be related to the point that came before it. EG, the autocorrelation remains constant over time.
 
@@ -300,8 +300,7 @@ lag_plot(table['price_dollars'], lag=1)
 
 
 
-![png](output_15_1.png)
-
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_15_1.png)
 
 This Correlation pretty much speaks for itself. This graph shows that y(t) is a really good predictor of the value of y(t+1). Athough, this graph might lead us to believe that a presistence model would perform well. We don't want our model to fit this correlation.
 
@@ -315,7 +314,7 @@ plt.show()
 ```
 
 
-![png](output_17_0.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_17_0.png)
 
 
 Fortunately, the first derivative does the trick:
@@ -328,7 +327,7 @@ plt.show()
 ```
 
 
-![png](output_19_0.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_19_0.png)
 
 
 *I didn't differentiate the 'raw_per_decks' feature because in this particular card, it is so sparse. I checked the autocorrelation down the line. As I suspected, it was pretty low given the nature of MTG card game.*
@@ -430,7 +429,7 @@ The set the values accordingly and use the forward fill to complete the table. T
 ```python
 for i in range(example_full_table.shape[0]):
     if not pd.isnull(example_full_table.iloc[i,3]) and pd.isnull(example_full_table.iloc[i,2]):
-        example_full_table.iloc[i,2] = 0 
+        example_full_table.iloc[i,2] = 0
 
 example_full_table = example_full_table.drop('tourny_dates', axis=1)
 example_full_table.fillna(method='ffill', inplace=True)
@@ -449,14 +448,14 @@ def horizonize(array, window=6, col='', index=[]):
     cols = []
     for i in range(window):
         cols.append(col+'_t-' + str(i))
-        
+
     df = pd.DataFrame(columns=cols)
     for i in range(0, len(array)):
         if i<window:
             df.loc[i] = [array[i-j] for j in range(i+1)] + [None for k in range(1, window-i)]
         else:
             df.loc[i] = [array[i-j] for j in range(window)]
-            
+
     if len(index) > 0:
         df.set_index(index, inplace=True)
     return(df)
@@ -486,7 +485,7 @@ example_full_table.plot(figsize=(16,10))
 
 
 
-![png](output_31_1.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_31_1.png)
 
 
 Just a quick backfill to keep the table the same size after the rolling averages.
@@ -585,16 +584,16 @@ Here is where horizonize gets implemented. What it does is effectively make a fe
 
 ```python
 hdpd = horizonize(example_full_table['d_price_dollars'].values,
-                  col='d_pd', window =4, 
+                  col='d_pd', window =4,
                   index=example_full_table.index)
 
-hraw = horizonize(example_full_table['raw_per_decks'].values, 
+hraw = horizonize(example_full_table['raw_per_decks'].values,
                   col='raw',window=4,
                   index=example_full_table.index)
 
 hraw = hraw.drop('raw_t-0', axis=1)
 hdpd = hdpd.drop('d_pd_t-0', axis=1)
-prepared_data = pd.concat([hraw, hdpd, example_full_table['price_dollars_rolling'], 
+prepared_data = pd.concat([hraw, hdpd, example_full_table['price_dollars_rolling'],
                            example_full_table['price_dollars']], axis=1).dropna(axis=0)
 prepared_data.head(10)
 ```
@@ -846,13 +845,13 @@ class Horizonizer(BaseEstimator, TransformerMixin):
         self.columns = columns
         self.remove_t0 = remove_t0
         assert len(columns) == len(windows), 'windows and columns are not same length'
-    
+
     def fit(self, X, y=None):
         return self
-    
+
     def transform(self, X):
 
-            
+
         for c in range(len(self.columns)):
             subdf_cols = []
             series = X[self.columns[c]]
@@ -860,23 +859,23 @@ class Horizonizer(BaseEstimator, TransformerMixin):
                 subdf_cols.append(self.columns[c] + '_t-' + str(i))
 
             subdf = pd.DataFrame(columns = subdf_cols)
-            
+
             for i in range(len(series)):
                 if i < self.windows[c]:
                     subdf.loc[i] = [series[i-j] for j in range(i+1)] + [None for k in range(1, self.windows[c]-i)]
                 else:
                     subdf.loc[i] = [series[i-j] for j in range(self.windows[c])]
-                    
+
             if len(X.index) > 0:
                 subdf.set_index(X.index, inplace=True)
-            
+
             if self.remove_t0:
                 subdf = subdf.drop(self.columns[c] + '_t-' + str(0), axis=1)
                 X = X.drop(self.columns[c], axis=1)
             X = pd.concat([X, subdf], axis=1)
-            
+
         return X
-    
+
 # horizon_pipeline = Horizonizer(col='price_dollars', columns=['d_price_dollars'], windows=[3])
 # df_dollars = horizon_pipeline.transform(example_full_table)
 # df_dollars
@@ -887,15 +886,15 @@ class Horizonizer(BaseEstimator, TransformerMixin):
 class TournamentImputer(BaseEstimator, TransformerMixin):
     def __init__(self):
         pass
-    
+
     def fit(self, X, y=None):
         return self
-    
+
     def transform(self, X):
         for i in range(X.shape[0]):
             if not pd.isnull(X.iloc[i,3]) and pd.isnull(X.iloc[i,2]):
                 X.iloc[i,2] = 0
-                
+
         X = X.drop('tourny_dates', axis=1)
         X.fillna(method='ffill', inplace=True)
         X.fillna(method='bfill', inplace=True)
@@ -914,10 +913,10 @@ class RollingAverages(BaseEstimator, TransformerMixin):
         self.windows = windows
         assert len(self.windows)==len(self.columns), 'columns and windows not same length'
         assert shift_t0 == True, "I haven't coded the shift_t0 hyperperam, consider this a reminder"
-        
+
     def fit(self, X, y=None):
         return self
-    
+
     def transform(self, X):
         for c in range(len(self.columns)):
             X.loc[:, self.columns[c] + '_rolavg'] = X[self.columns[c]].rolling(window=self.windows[c]).mean().shift(1)
@@ -933,10 +932,10 @@ class PostImputer(BaseEstimator, TransformerMixin):
     def __init__(self, fill='bfill'):
         self
         pass
-    
+
     def fit(self, X, y=None):
         return self
-    
+
     def transform(self, X):
         return X.fillna(method='bfill')
 ```
@@ -956,7 +955,7 @@ card_occurances = load_occurances_grouped_date(path)
 card_occurances_raw = card_occurances[['datetime', 'raw_per_decks']]
 table  = pd.merge(card,
                  card_occurances_raw[['datetime', 'raw_per_decks']],
-                 on='datetime', 
+                 on='datetime',
                  how='left')
 table.set_index('datetime', inplace=True)
 tourny_dates = load_tournament_dates(path='./data/tournies_standard_aug19-oct17.json')
@@ -1003,7 +1002,7 @@ class Forcaster(BaseEstimator, TransformerMixin):
         self.forcast_len = forcast_len
         self.method = method
         self.forcast_models = []
-        
+
     def fit(self, X, y=None):
         self.y = y.copy()
         for i in range(self.forcast_len):
@@ -1011,29 +1010,29 @@ class Forcaster(BaseEstimator, TransformerMixin):
             lin_reg.fit(X,y.shift(-1*i).fillna(method='ffill'))
             self.forcast_models.append(lin_reg)
         return self
-    
+
     def transform(self, X):
         return X
-        
+
     def forcast(self, X, start='2019-05-6', forcast_col='t+0'):
         start = datetime.strptime(start, '%Y-%m-%d')
         columns =['forcast']
         for m in range(len(self.forcast_models)):
             columns.append('t+' + str(m))
-            
+
         forcast_y = pd.DataFrame(columns=columns)
-        
+
         for i in range(X.shape[0]):
             predictions = [None]
             #print(X.iloc[i])
-            
+
             for model in self.forcast_models:
                 predictions.append(model.predict(X.iloc[i].values.reshape(1,-1))[0])
             forcast_y.loc[i] = predictions
-        
+
         forcast_y.set_index(X.index, inplace=True)
-        
-        
+
+
         for i, row in forcast_y.iterrows():
             forcast_y.at[i,'forcast'] = forcast_y.at[i, forcast_col]
             if i > start:
@@ -1041,7 +1040,7 @@ class Forcaster(BaseEstimator, TransformerMixin):
                     date_index = i + timedelta(days=j)
                     forcast_y.at[date_index,'forcast'] = forcast_y.at[date_index, 't+'+str(j)]
                 break
-        
+
         plt.plot(forcast_y['forcast'])
         plt.axvline(x=start, linestyle='--', color='k')
         plt.grid()
@@ -1064,7 +1063,7 @@ plt.legend(['forcast',
 ```
 
 
-![png](output_64_0.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_64_0.png)
 
 
 Boom, there is your forcast overlayed with the actual. Looks pretty good so far.
@@ -1088,7 +1087,7 @@ card_occurances = load_occurances_grouped_date(path)
 card_occurances_raw = card_occurances[['datetime', 'raw_per_decks']]
 table  = pd.merge(card,
                  card_occurances_raw[['datetime', 'raw_per_decks']],
-                 on='datetime', 
+                 on='datetime',
                  how='left')
 table.set_index('datetime', inplace=True)
 tourny_dates = load_tournament_dates(path='./data/tournies_standard_aug19-oct17.json')
@@ -1115,22 +1114,22 @@ plt.legend(['forcast',
             'actual']);
 ```
 
-    /Users/chrisevans/Study/01_MachineLearning/env/lib/python3.7/site-packages/pandas/core/indexing.py:362: SettingWithCopyWarning: 
+    /Users/chrisevans/Study/01_MachineLearning/env/lib/python3.7/site-packages/pandas/core/indexing.py:362: SettingWithCopyWarning:
     A value is trying to be set on a copy of a slice from a DataFrame.
     Try using .loc[row_indexer,col_indexer] = value instead
-    
+
     See the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
       self.obj[key] = _infer_fill_value(value)
-    /Users/chrisevans/Study/01_MachineLearning/env/lib/python3.7/site-packages/pandas/core/indexing.py:480: SettingWithCopyWarning: 
+    /Users/chrisevans/Study/01_MachineLearning/env/lib/python3.7/site-packages/pandas/core/indexing.py:480: SettingWithCopyWarning:
     A value is trying to be set on a copy of a slice from a DataFrame.
     Try using .loc[row_indexer,col_indexer] = value instead
-    
+
     See the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
       self.obj[item] = s
 
 
 
-![png](output_67_1.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForcasting/master/output_67_1.png)
 
 
 
