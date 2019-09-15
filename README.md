@@ -1,24 +1,26 @@
 
-# Multivariate ARIMA Forcasting On Magic: the Gathering, Median Card Prices
+# Multivariate ARIMA Forecasting On Magic: the Gathering, Median Card Prices
 An analysis of the effect of MTG tournaments on online card prices.
 ## - Christopher W. Evans, UMass Amherst Undergraduate
 
-Arclight Pheonix
-![png](output_70_1.png)
+For a better reading experience
+
+Arclight Phoenix
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForecasting/master/output_70_1.png)
 
 Divine Visitation
-![png](output_69_1.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForecasting/master/output_69_1.png)
 
 A note on the data:
-Surprising, at the time of this analysis, the complete dataset of pricing history does not exist. The tools and collected all the data for this analysis was built by myself (Chris Evans). The data for this project is private. Eventually I will release the scrapers and the data csv's when I know for sure that this is not easily monetizable.
+Surprising, at the time of this analysis, the complete dataset of pricing history does not exist. The tools and collected all the data for this analysis was built by myself (Chris Evans). The data for this project is private. Eventually, I will release the scrapers and the data csv's when I know for sure that this is not easily monetizable.
 
 Functions referenced will be listed at the bottom of this document.
 
 ## Multivariance
 
-Below is a graph of the two the main features that have been collected, the pricing history (Blue) and the occurances in tournaments (Orange and Red). I chose to add the rolling average of the occurance data (Red) because the occurance data is quite noisy and hard to read.
+Below is a graph of the two the main features that have been collected, the pricing history (Blue) and the occurrences in tournaments (Orange and Red). I chose to add the rolling average of the occurrence data (Red) because the occurrence data is quite noisy and hard to read.
 
-As you can see, the occurance data seems somewhat correlated with the price of the card overtime. The question is, can we leverage it to predicts gains/losses in the future?
+As you can see, the occurrence data seems somewhat correlated with the price of the card over time. The question is, can we leverage it to predicts gains/losses in the future?
 
 
 ```python
@@ -29,15 +31,15 @@ show_raw_and_prices('./data/ravnica-allegiance/godless-shrine')
 
 
 
-![png](output_6_1.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForecasting/master/output_6_1.png)
 
 
-## Forcasting Analysis
+## Forecasting Analysis
 
 Firstly, we should load up the data on an example card to begin to outline the data prep process.
 
 ### Data Loading
-Just to setup the graphing environment and do some basic imports
+Just to set up the graphing environment and do some basic imports
 
 
 ```python
@@ -76,7 +78,7 @@ table  = pd.merge(card,
                  how='left')
 ```
 
-Keep in mind that the initial analysis will be super simple. Later in this document I will explore using more features such as occurances in different formats and so on. For now I am using three features: 'price_dollars' (card prices over time), 'd_price_dollers' (differentiated price_dollars), and 'raw_per_decks' (the number of raw occurances in a tournament over the number of decks that make placements).
+Keep in mind that the initial analysis will be super simple. Later in this document, I will explore using more features such as occurrences in different formats and so on. For now, I am using three features: 'price_dollars' (card prices over time), 'd_price_dollers' (differentiated price_dollars), and 'raw_per_decks' (the number of raw occurrences in a tournament over the number of decks that make placements).
 
 Here is what the table looks like now:
 
@@ -158,7 +160,7 @@ table.iloc[100:105, :]
 
 This is pretty much the crux of the difference between VAR and ARIMA models. ARIMA stands for Auto Regression Integrated Moving Average. The differentiation is the 'Integrated' part. Think of it like this: price_dollars is the integral of d_price_dollars.
 
-The reason why is we want to make sure that we distil the data down to the simplest usable form while also the mainting the ability to develop new datapoints as time moves forward without overlaped featuredata. This means that all features must be 'stationary', or in more simple terms, the datapoint should not be related to the point that came before it. EG, the autocorrelation remains constant over time.
+The reason why is we want to make sure that we distill the data down to the simplest usable form while also the maintaining the ability to develop new data points as time moves forward without overlapped feature data. This means that all features must be 'stationary', or in more simple terms, the data point should not be related to the point that came before it. EG, the autocorrelation remains constant over time.
 
 Here are some graphs of the autocorrelation.
 
@@ -178,10 +180,10 @@ lag_plot(table['price_dollars'], lag=1)
 
 
 
-![png](output_15_1.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForecasting/master/output_15_1.png)
 
 
-This Correlation pretty much speaks for itself. This graph shows that y(t) is a really good predictor of the value of y(t+1). Athough, this graph might lead us to believe that a presistence model would perform well. We don't want our model to fit this correlation.
+This Correlation pretty much speaks for itself. This graph shows that y(t) is a really good predictor of the value of y(t+1). Although, this graph might lead us to believe that a persistence model would perform well. We don't want our model to fit this correlation.
 
 It might not always be clear that features are correlated. Statsmodels Library actually provides a handy little grapher that shows you when you need to fix your autocorrelation.
 
@@ -193,7 +195,7 @@ plt.show()
 ```
 
 
-![png](output_17_0.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForecasting/master/output_17_0.png)
 
 
 Differentiating the data should solve this. While we are at it, we should probably reindex to make sure all datetimes are represented.
@@ -218,16 +220,16 @@ plt.show()
 ```
 
 
-![png](output_21_0.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForecasting/master/output_21_0.png)
 
 
 *I didn't differentiate the 'raw_per_decks' feature because in this particular card, it is so sparse. I checked the autocorrelation down the line. As I suspected, it was pretty low given the nature of MTG card game.*
 
 ### Data Prep
 
-The next step is to make sure that the difference is made between there being no occurances and there being no tournamentes on that day. As of right now, both are marked as NaN, but will later be marked as either NaN or 0.
+The next step is to make sure that the difference is made between there being no occurrences and there being no tournaments on that day. As of right now, both are marked as NaN, but will later be marked as either NaN or 0.
 
-I did this by loading the dates from a json data file I collected. Then by joining the tables about the datetime index I was able to see which rows were associated with a tournament and which were not.
+I did this by loading the dates from a json data file I collected. Then by joining the tables about the datetime index, I was able to see which rows were associated with a tournament and which were not.
 
 
 ```python
@@ -306,7 +308,7 @@ pre_pipeline_df.head()
 
 
 
-The set the values accordingly and use the forward fill to complete the table. The ffill method is particularly good for this scenario given that if there was not a tournament on that day, then the last scheduled tournmement appears higher up in the viewing order.
+The set the values accordingly and use the forward fill to complete the table. The ffill method is particularly good for this scenario given that if there was not a tournament on that day, then the last scheduled tournament appears higher up in the viewing order.
 
 
 ```python
@@ -318,9 +320,9 @@ example_full_table = example_full_table.drop('tourny_dates', axis=1)
 example_full_table.fillna(method='ffill', inplace=True)
 ```
 
-The next cell is a function that I am calling 'horizonize' which is based off of Ethan Rosenthal's blog [link here](https://www.ethanrosenthal.com/2019/02/18/time-series-for-scikit-learn-people-part3/)
+The next cell is a function that I am calling 'horizonize' which is based on Ethan Rosenthal's blog [link here](https://www.ethanrosenthal.com/2019/02/18/time-series-for-scikit-learn-people-part3/)
 
-*Ethan Rosenthal actually made a whole library to help with this sort of analysis using scikit-learn called [skits](https://github.com/EthanRosenthal/skits). Unfortunately, I had trouble findind docs that I could understand so I just reinvented the wheel on this one.*
+*Ethan Rosenthal actually made a whole library to help with this sort of analysis using scikit-learn called [skits](https://github.com/EthanRosenthal/skits). Unfortunately, I had trouble finding docs that I could understand so I just reinvented the wheel on this one.*
 
 
 
@@ -345,7 +347,7 @@ def horizonize(array, window=6, col='', index=[]):
 
 ```
 
-Here I just add two rolling averages to the DataFrame because those help out alot when predicting the integral constant. The model we will train would have a hell of a time trying to predict the dollar value of the card based soley off of the way that it has changed over time. There needs to be some sort of reference to fill in where the derivative falls off, and that is the rolling average feature. It is important to shift the rolling window as to not bleed predicting data in to the featuredata set.
+Here I just add two rolling averages to the DataFrame because those help out a lot when predicting the integral constant. The model we will train would have a hell of a time trying to predict the dollar value of the card-based solely off of the way that it has changed over time. There needs to be some sort of reference to fill in where the derivative falls off, and that is the rolling average feature. It is important to shift the rolling window as to not bleed predicting data into the feature data set.
 
 
 ```python
@@ -368,7 +370,7 @@ example_full_table.plot(figsize=(16,10))
 
 
 
-![png](output_33_1.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForecasting/master/output_33_1.png)
 
 
 Just a quick backfill to keep the table the same size after the rolling averages.
@@ -621,7 +623,7 @@ prepared_data.head(10)
 
 
 
-*Note: It is very important to drop the t-0 columns because that would bleed the values we are trying to predict into the featuredata.*
+*Note: It is very important to drop the t-0 columns because that would bleed the values we are trying to predict into the feature data.*
 
 ### Prediction with Linear Regressor
 
@@ -681,7 +683,7 @@ print('lin_rmse: ', lin_rmse)
     lin_rmse:  0.12514279450160506
 
 
-So it seems like the LinearRegression model performs far better at 13 cents error. Although a better metric would be rmse/meanPrice so that we can get a frame of reference of how big our error is relative to the price.
+So it seems like the LinearRegression model performs far better at 13 cents error. Although a better metric would be rmse/meanPrice so that we can get a frame of reference for how big our error is relative to the price.
 
 
 ```python
@@ -844,7 +846,7 @@ PrepPipe = Pipeline([
 ])
 ```
 
-A pretty common pitfall (and one that I originally fell into) is to try and use previous predictions to make further forcasts. The problem when doing this is that you multiply the rmse with each prediction. So you cannot forcast more than a few steps without completely losing all hope of it being accurate.
+A pretty common pitfall (and one that I originally fell into) is to try and use previous predictions to make further forecasts. The problem when doing this is that you multiply the rmse with each prediction. So you cannot forecast more than a few steps without completely losing all hope of it being accurate.
 
 Basically what we have to do is have one featureset and up to as many y-vectors as we want for our forcasts, shifted by 1 interval. Like so:
 
@@ -859,7 +861,7 @@ y_4 = y.shift(-4).fillna(method='ffill')
 y_5 = y.shift(-5).fillna(method='ffill')
 ```
 
-I actually am not going to use these to train because hard coding like this is a pain to work with. Instead I will build a pipe to do the forcasting for me.
+I actually am not going to use these to train because hard coding like this is a pain to work with. Instead, I will build a pipe to do the forecasting for me.
 
 
 ```python
@@ -915,7 +917,7 @@ class Forcaster(BaseEstimator, TransformerMixin):
         return(forcast_y)
 ```
 
-Now all I have to do is fit the training set to the forcaster pipe and bobs your uncle.
+Now all I have to do is fit the training set to the forecaster pipe and bobs your uncle.
 
 
 ```python
@@ -931,10 +933,10 @@ plt.legend(['forcast',
 ```
 
 
-![png](output_66_0.png)
+![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForecasting/master/output_66_0.png)
 
 
-Boom, there is your forcast overlayed with the actual. Looks pretty good so far.
+Boom, there is your forecast overlayed with the actual. Looks pretty good so far.
 
 ***This analysis is still in progress and is continuously being added too.***
 
@@ -944,7 +946,7 @@ I will explore these things later in the analysis:
  - Feature optimization
  - Monte Carlo simulation with a portfolio
  - Stochastic Gradient Descent with combined card datasets
- - Live forcasting
+ - Live forecasting
 
 
  ### Functions to help with analysis
@@ -969,7 +971,7 @@ I will explore these things later in the analysis:
  def dateparse(time_unix):
      return datetime.utcfromtimestamp(int(time_unix)/1000).strftime('%Y-%m-%d %H:%M:%S')
 
- ### loads all the occurance data into a DataFrame
+ ### loads all the occurrence data into a DataFrame
  def load_occurance_data(path=r'./data/'):
      csv_path = os.path.join(path, 'occurance_data-1.csv')
      return pd.read_csv(csv_path,parse_dates=True,date_parser=dateparse)
@@ -996,7 +998,7 @@ I will explore these things later in the analysis:
      return data[0]
 
 
- ### constructs a pandas.Dataframe containing all of the occurance data of each card grouped by day. It is possible
+ ### constructs a pandas.Dataframe containing all of the occurrence data of each card grouped by day. It is possible
  ### that there are more than one tournaments per day, but the analysis will only interval per day so that data must
  ### be grouped into one row
 
