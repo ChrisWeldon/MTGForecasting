@@ -1,142 +1,18 @@
 
-# Multivariate ARIMA Forecasting On Magic: the Gathering, Median Card Prices
+# Multivariate ARIMA Forcasting On Magic: the Gathering, Median Card Prices
 An analysis of the effect of MTG tournaments on online card prices.
 ## - Christopher W. Evans, UMass Amherst Undergraduate
 
-For a better reading experience and all of the code:
-[https://github.com/ChrisWeldon/MTGforecasting](https://github.com/ChrisWeldon/MTGForecasting)
+Arclight Pheonix
+![png](output_70_1.png)
+
+Divine Visitation
+![png](output_69_1.png)
 
 A note on the data:
-Surprising, at the time of this analysis, the complete dataset of pricing history does not exist. Chris Evans built the tools and collected all the data for this analysis. The data for this project is private. Eventually I will release the scrapers and the data csv's when I know for sure that this is not easily monetizable.
+Surprising, at the time of this analysis, the complete dataset of pricing history does not exist. The tools and collected all the data for this analysis was built by myself (Chris Evans). The data for this project is private. Eventually I will release the scrapers and the data csv's when I know for sure that this is not easily monetizable.
 
-
-### Functions to help with analysis
-I won't go over the details of how each function works but I will outline the functionality and use cases.
-
-
-```python
-import os, csv
-import pandas as pd
-import json
-
-example_card = './data/war-of-the-spark/teferi,-time-raveler/'
-
-### card data is stored within folder so this is used to convert the real name into folder-name.
-### eg, Teferi, Time Raveler = teferi,-time-raveler
-def convert_name(name):
-    return name.replace('/', 'out').replace(" ", "-").lower()
-    pass
-
-
-### converts unix timestamp into datetime
-def dateparse(time_unix):
-    return datetime.utcfromtimestamp(int(time_unix)/1000).strftime('%Y-%m-%d %H:%M:%S')
-
-### loads all the occurance data into a DataFrame
-def load_occurance_data(path=r'./data/'):
-    csv_path = os.path.join(path, 'occurance_data-1.csv')
-    return pd.read_csv(csv_path,parse_dates=True,date_parser=dateparse)
-
-### constructs a pandas.Dataframe from a .csv file which contains all of the historical pricing data
-def load_card_data(card_path=example_card):
-    csv_path = os.path.join(card_path, 'historic.csv')
-    card = pd.read_csv(csv_path,parse_dates=['datetime'])
-    card.loc[:,'date_unix'] = card['date_unix']/1000
-    card.loc[:,'datetime'] = pd.to_datetime(card['datetime'])
-    card.set_index('datetime')
-    card.loc[:,'d_price_dollars'] = card['price_dollars'].diff()
-    return card
-
-### constructs a pandas.Dataframe containing all of the data contained on the card
-### eg, rarity, name, etc
-def load_manifest_data(card_path=example_card):
-    csv_path = os.path.join(card_path, 'manifest.csv')
-    data = None
-    with open(csv_path, 'r') as csv_file:
-        reader = csv.reader(csv_file)
-        headers = next(reader, None)
-        data = [r for r in reader]
-    return data[0]
-
-
-### constructs a pandas.Dataframe containing all of the occurance data of each card grouped by day. It is possible
-### that there are more than one tournaments per day, but the analysis will only interval per day so that data must
-### be grouped into one row
-
-def load_occurances_grouped_date(path):
-    card_manifest = load_manifest_data(path)
-    occurances = load_occurance_data()
-    card_occurances = occurances.loc[occurances['card']==card_manifest[0]]
-
-    card_occurances.loc[:,'datetime'] = pd.to_datetime(card_occurances['date'])
-    card_occurances.set_index('datetime')
-    card_occurances.loc[:,'raw_per_decks'] = card_occurances['raw']/card_occurances['deck_nums']
-    card_occurances.loc[:,'total_first'] = card_occurances['1st Place']
-
-    card_occurances.loc[:,'scaled_placement'] = .5*(card_occurances['1st Place'] + card_occurances['2nd Place']) + .25*(card_occurances['3rd Place'] + card_occurances['4th Place']) + .13*(card_occurances['5th Place'] + card_occurances['6th Place'] + card_occurances['7th Place'] + card_occurances['8th Place'])
-
-
-    card_occs_nums_only = card_occurances.drop('event', axis=1).drop('date_unix', axis=1).drop('card', axis=1)
-    card_occs_stacked = card_occs_nums_only.groupby('datetime').sum().reset_index()
-
-
-    card_occs_stacked.loc[:,'raw_rolling'] = card_occs_stacked['raw_per_decks'].rolling(window=14).mean()
-    card_occs_stacked.loc[:,'d_raw_rolling'] = card_occs_stacked['raw_rolling'].diff()
-    card_occs_stacked.loc[:,'d_raw_per_decks'] = card_occs_stacked['raw_per_decks'].diff()
-
-    return card_occs_stacked
-
-def load_tournament_dates(path='./data/tournies.json'):
-    with open(path) as json_data:
-        obj = json.load(json_data)
-        array = []
-        for key, item in obj.items():
-            if item not in array:
-                array.append(item)
-        df = pd.DataFrame(array, columns=['tourny_dates'])
-        df['tourny_dates'] = pd.to_datetime(df['tourny_dates'])
-        df['date'] = df['tourny_dates']
-        df.set_index('date', inplace=True)
-        return(df)
-
-```
-
-
-```python
-import matplotlib.dates as mdates
-from scipy import integrate
-%matplotlib inline
-%config InlineBackend.figure_format = 'retina'
-import matplotlib.pyplot as plt
-
-### A quality-of-life function to load data and show it all in one swing
-
-def show_raw_and_prices(path):
-    print(path.split('/')[-1])
-    card = load_card_data(path)
-    card_occurances = load_occurances_grouped_date(path)
-
-    #plot data
-
-    fig, ax = plt.subplots(figsize=(15,7))
-    ax = card.plot(x='datetime', y='price_dollars', ax=ax)
-    #ax = card.plot(x='datetime', y='d_price_dollars', ax=ax, style='--', color='blue')
-    ax = card_occurances.plot(x='datetime', y='raw_per_decks', ax=ax, style='--', alpha=1)
-    #ax = card_occurances.plot(x='datetime', y='scaled_placement', ax=ax, style=':', alpha=1, color='red')
-    #ax = card_occurances.plot(x='datetime', y='total_first', ax=ax, style='.', alpha=.3, color='green')
-    #ax = card_occurances.plot(x='datetime', y='2nd Place', ax=ax, style='.', alpha=.3, color='purple')
-    #ax = card_occurances.plot(x='datetime', y='3rd Place', ax=ax, style='.', alpha=.3, color='blue')
-    ax = card_occurances.plot(x='datetime', y='raw_rolling', ax=ax, style='-', alpha=1, color='red')
-    #ax = card_occurances.plot(x='datetime', y='d_raw_per_decks', ax=ax, style=':', alpha=1, color='red')
-
-    #set ticks every week
-    ax.xaxis.set_major_locator(mdates.WeekdayLocator())
-    #set major ticks format
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
-    ax.grid()
-    plt.gcf().autofmt_xdate()
-    plt.show()
-```
+Functions referenced will be listed at the bottom of this document.
 
 ## Multivariance
 
@@ -153,10 +29,10 @@ show_raw_and_prices('./data/ravnica-allegiance/godless-shrine')
 
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_6_1.png)
+![png](output_6_1.png)
 
 
-## forecasting Analysis
+## Forcasting Analysis
 
 Firstly, we should load up the data on an example card to begin to outline the data prep process.
 
@@ -297,12 +173,13 @@ lag_plot(table['price_dollars'], lag=1)
 
 
 
-    <matplotlib.axes._subplots.AxesSubplot at 0x105d70b00>
+    <matplotlib.axes._subplots.AxesSubplot at 0x11dbd0ba8>
 
 
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_15_1.png)
+![png](output_15_1.png)
+
 
 This Correlation pretty much speaks for itself. This graph shows that y(t) is a really good predictor of the value of y(t+1). Athough, this graph might lead us to believe that a presistence model would perform well. We don't want our model to fit this correlation.
 
@@ -316,8 +193,20 @@ plt.show()
 ```
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_17_0.png)
+![png](output_17_0.png)
 
+
+Differentiating the data should solve this. While we are at it, we should probably reindex to make sure all datetimes are represented.
+
+
+```python
+table.set_index('datetime', inplace=True)
+
+idx = pd.date_range(table.index[0], table.index[-1])
+table = table.reindex(idx, fill_value=None)
+table['price_dollars'].fillna(method='ffill', inplace=True)
+table.loc[:,'d_price_dollars'] = table['price_dollars'].diff()
+```
 
 Fortunately, the first derivative does the trick:
 
@@ -329,7 +218,7 @@ plt.show()
 ```
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_19_0.png)
+![png](output_21_0.png)
 
 
 *I didn't differentiate the 'raw_per_decks' feature because in this particular card, it is so sparse. I checked the autocorrelation down the line. As I suspected, it was pretty low given the nature of MTG card game.*
@@ -342,7 +231,6 @@ I did this by loading the dates from a json data file I collected. Then by joini
 
 
 ```python
-table.set_index('datetime', inplace=True)
 tourny_dates = load_tournament_dates(path='./data/tournies_standard_aug19-oct17.json')
 example_full_table = pd.merge(table, tourny_dates, how='left', right_index=True, left_index=True)
 pre_pipeline_df = example_full_table.copy()
@@ -374,13 +262,6 @@ pre_pipeline_df.head()
       <th>d_price_dollars</th>
       <th>raw_per_decks</th>
       <th>tourny_dates</th>
-    </tr>
-    <tr>
-      <th>datetime</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -482,12 +363,12 @@ example_full_table.plot(figsize=(16,10))
 
 
 
-    <matplotlib.axes._subplots.AxesSubplot at 0x11a76f940>
+    <matplotlib.axes._subplots.AxesSubplot at 0x11dd76b70>
 
 
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_31_1.png)
+![png](output_33_1.png)
 
 
 Just a quick backfill to keep the table the same size after the rolling averages.
@@ -524,14 +405,6 @@ example_full_table.head()
       <th>raw_per_decks</th>
       <th>raw_rolling</th>
       <th>price_dollars_rolling</th>
-    </tr>
-    <tr>
-      <th>datetime</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -629,17 +502,6 @@ prepared_data.head(10)
       <th>d_pd_t-3</th>
       <th>price_dollars_rolling</th>
       <th>price_dollars</th>
-    </tr>
-    <tr>
-      <th>datetime</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -815,8 +677,8 @@ print('tree_rmse: ', tree_rmse)
 print('lin_rmse: ', lin_rmse)
 ```
 
-    tree_rmse:  0.3659155843579679
-    lin_rmse:  0.12706685169042348
+    tree_rmse:  0.3533571710360224
+    lin_rmse:  0.12514279450160506
 
 
 So it seems like the LinearRegression model performs far better at 13 cents error. Although a better metric would be rmse/meanPrice so that we can get a frame of reference of how big our error is relative to the price.
@@ -827,8 +689,8 @@ print('tree_rmse/mean: ', tree_rmse/y_test.mean())
 print('lin_rmse/mean: ', lin_rmse/y_test.mean())
 ```
 
-    tree_rmse/mean:  0.05080119982481111
-    lin_rmse/mean:  0.017641086632483784
+    tree_rmse/mean:  0.04938382121189592
+    lin_rmse/mean:  0.017489469285439475
 
 
 Not bad....until we realize that this is a one day forcast. We should be shooting for a much longer term forcast.
@@ -942,7 +804,7 @@ class PostImputer(BaseEstimator, TransformerMixin):
         return X.fillna(method='bfill')
 ```
 
-## forecasting for Real This Time
+## Forcasting for Real This Time
 
 So now a start fresh, only this time a little more compactly. This next step is just assembling the table to fit into pipeline.
 
@@ -960,6 +822,10 @@ table  = pd.merge(card,
                  on='datetime',
                  how='left')
 table.set_index('datetime', inplace=True)
+idx = pd.date_range(table.index[0], table.index[-1])
+table = table.reindex(idx, fill_value=None)
+table['price_dollars'].fillna(method='ffill', inplace=True)
+table.loc[:,'d_price_dollars'] = table['price_dollars'].diff()
 tourny_dates = load_tournament_dates(path='./data/tournies_standard_aug19-oct17.json')
 card_data = pd.merge(table, tourny_dates, how='left', right_index=True, left_index=True)
 ```
@@ -993,7 +859,7 @@ y_4 = y.shift(-4).fillna(method='ffill')
 y_5 = y.shift(-5).fillna(method='ffill')
 ```
 
-I actually am not going to use these to train because hard coding like this is a pain to work with. Instead I will build a pipe to do the forecasting for me.
+I actually am not going to use these to train because hard coding like this is a pain to work with. Instead I will build a pipe to do the forcasting for me.
 
 
 ```python
@@ -1065,7 +931,7 @@ plt.legend(['forcast',
 ```
 
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_64_0.png)
+![png](output_66_0.png)
 
 
 Boom, there is your forcast overlayed with the actual. Looks pretty good so far.
@@ -1073,68 +939,138 @@ Boom, there is your forcast overlayed with the actual. Looks pretty good so far.
 ***This analysis is still in progress and is continuously being added too.***
 
 I will explore these things later in the analysis:
+ - Add Market Events
+ - Retro Fit Modern Format data.
  - Feature optimization
  - Monte Carlo simulation with a portfolio
  - Stochastic Gradient Descent with combined card datasets
- - Live forecasting
+ - Live forcasting
 
 
-```python
-from sklearn.pipeline import Pipeline
-
-path = './data/guilds-of-ravnica/divine-visitation//'
-
-card = load_card_data(path).drop('date_unix', axis=1)
-card_occurances = load_occurances_grouped_date(path)
-card_occurances_raw = card_occurances[['datetime', 'raw_per_decks']]
-table  = pd.merge(card,
-                 card_occurances_raw[['datetime', 'raw_per_decks']],
-                 on='datetime',
-                 how='left')
-table.set_index('datetime', inplace=True)
-tourny_dates = load_tournament_dates(path='./data/tournies_standard_aug19-oct17.json')
-card_data = pd.merge(table, tourny_dates, how='left', right_index=True, left_index=True)
-
-PrepPipe = Pipeline([
-    ('tourny_imputer', TournamentImputer()),
-    ('rolling_avg', RollingAverages(columns=['price_dollars', 'raw_per_decks'], windows=[5,5])),
-    ('horizonizer', Horizonizer(columns = ['d_price_dollars', 'raw_per_decks'], windows=[5,5])),
-    ('post_imputer', PostImputer())
-])
-
-table = PrepPipe.fit_transform(card_data)
-X, y = table.copy().drop('price_dollars', axis=1), table['price_dollars']
-
-forcaster = Forcaster(forcast_len=28)
-start_idx = '2018-12-10'
-forcaster.fit(X[:start_idx],y[:start_idx])
-
-preds = forcaster.forcast(X, start=start_idx)
-plt.plot(y)
-plt.legend(['forcast',
-            'start',
-            'actual']);
-```
-
-    /Users/chrisevans/Study/01_MachineLearning/env/lib/python3.7/site-packages/pandas/core/indexing.py:362: SettingWithCopyWarning:
-    A value is trying to be set on a copy of a slice from a DataFrame.
-    Try using .loc[row_indexer,col_indexer] = value instead
-
-    See the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-      self.obj[key] = _infer_fill_value(value)
-    /Users/chrisevans/Study/01_MachineLearning/env/lib/python3.7/site-packages/pandas/core/indexing.py:480: SettingWithCopyWarning:
-    A value is trying to be set on a copy of a slice from a DataFrame.
-    Try using .loc[row_indexer,col_indexer] = value instead
-
-    See the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-      self.obj[item] = s
+ ### Functions to help with analysis
+ I won't go over the details of how each function works but I will outline the functionality and use cases.
 
 
+ ```python
+ import os, csv
+ import pandas as pd
+ import json
 
-![png](https://raw.githubusercontent.com/ChrisWeldon/MTGforecasting/master/output_67_1.png)
+ example_card = './data/war-of-the-spark/teferi,-time-raveler/'
+
+ ### card data is stored within folder so this is used to convert the real name into folder-name.
+ ### eg, Teferi, Time Raveler = teferi,-time-raveler
+ def convert_name(name):
+     return name.replace('/', 'out').replace(" ", "-").lower()
+     pass
 
 
+ ### converts unix timestamp into datetime
+ def dateparse(time_unix):
+     return datetime.utcfromtimestamp(int(time_unix)/1000).strftime('%Y-%m-%d %H:%M:%S')
 
-```python
+ ### loads all the occurance data into a DataFrame
+ def load_occurance_data(path=r'./data/'):
+     csv_path = os.path.join(path, 'occurance_data-1.csv')
+     return pd.read_csv(csv_path,parse_dates=True,date_parser=dateparse)
 
-```
+ ### constructs a pandas.Dataframe from a .csv file which contains all of the historical pricing data
+ def load_card_data(card_path=example_card):
+     csv_path = os.path.join(card_path, 'historic.csv')
+     card = pd.read_csv(csv_path,parse_dates=['datetime'])
+     card.loc[:,'date_unix'] = card['date_unix']/1000
+     card.loc[:,'datetime'] = pd.to_datetime(card['datetime'])
+     card.set_index('datetime')
+     card.loc[:,'d_price_dollars'] = card['price_dollars'].diff()
+     return card
+
+ ### constructs a pandas.Dataframe containing all of the data contained on the card
+ ### eg, rarity, name, etc
+ def load_manifest_data(card_path=example_card):
+     csv_path = os.path.join(card_path, 'manifest.csv')
+     data = None
+     with open(csv_path, 'r') as csv_file:
+         reader = csv.reader(csv_file)
+         headers = next(reader, None)
+         data = [r for r in reader]
+     return data[0]
+
+
+ ### constructs a pandas.Dataframe containing all of the occurance data of each card grouped by day. It is possible
+ ### that there are more than one tournaments per day, but the analysis will only interval per day so that data must
+ ### be grouped into one row
+
+ def load_occurances_grouped_date(path):
+     card_manifest = load_manifest_data(path)
+     occurances = load_occurance_data()
+     card_occurances = occurances.loc[occurances['card']==card_manifest[0]]
+
+     card_occurances.loc[:,'datetime'] = pd.to_datetime(card_occurances['date'])
+     card_occurances.set_index('datetime')
+     card_occurances.loc[:,'raw_per_decks'] = card_occurances['raw']/card_occurances['deck_nums']
+     card_occurances.loc[:,'total_first'] = card_occurances['1st Place']
+
+     card_occurances.loc[:,'scaled_placement'] = .5*(card_occurances['1st Place'] + card_occurances['2nd Place']) + .25*(card_occurances['3rd Place'] + card_occurances['4th Place']) + .13*(card_occurances['5th Place'] + card_occurances['6th Place'] + card_occurances['7th Place'] + card_occurances['8th Place'])
+
+
+     card_occs_nums_only = card_occurances.drop('event', axis=1).drop('date_unix', axis=1).drop('card', axis=1)
+     card_occs_stacked = card_occs_nums_only.groupby('datetime').sum().reset_index()
+
+
+     card_occs_stacked.loc[:,'raw_rolling'] = card_occs_stacked['raw_per_decks'].rolling(window=14).mean()
+     #card_occs_stacked.loc[:,'d_raw_rolling'] = card_occs_stacked['raw_rolling'].diff()
+     #card_occs_stacked.loc[:,'d_raw_per_decks'] = card_occs_stacked['raw_per_decks'].diff()
+
+     return card_occs_stacked
+
+ def load_tournament_dates(path='./data/tournies.json'):
+     with open(path) as json_data:
+         obj = json.load(json_data)
+         array = []
+         for key, item in obj.items():
+             if item not in array:
+                 array.append(item)
+         df = pd.DataFrame(array, columns=['tourny_dates'])
+         df['tourny_dates'] = pd.to_datetime(df['tourny_dates'])
+         df['date'] = df['tourny_dates']
+         df.set_index('date', inplace=True)
+         return(df)
+
+ ```
+
+
+ ```python
+ import matplotlib.dates as mdates
+ from scipy import integrate
+ %matplotlib inline
+ %config InlineBackend.figure_format = 'retina'
+ import matplotlib.pyplot as plt
+
+ ### A quality-of-life function to load data and show it all in one swing
+
+ def show_raw_and_prices(path):
+     print(path.split('/')[-1])
+     card = load_card_data(path)
+     card_occurances = load_occurances_grouped_date(path)
+
+     #plot data
+
+     fig, ax = plt.subplots(figsize=(15,7))
+     ax = card.plot(x='datetime', y='price_dollars', ax=ax)
+     #ax = card.plot(x='datetime', y='d_price_dollars', ax=ax, style='--', color='blue')
+     ax = card_occurances.plot(x='datetime', y='raw_per_decks', ax=ax, style='--', alpha=1)
+     #ax = card_occurances.plot(x='datetime', y='scaled_placement', ax=ax, style=':', alpha=1, color='red')
+     #ax = card_occurances.plot(x='datetime', y='total_first', ax=ax, style='.', alpha=.3, color='green')
+     #ax = card_occurances.plot(x='datetime', y='2nd Place', ax=ax, style='.', alpha=.3, color='purple')
+     #ax = card_occurances.plot(x='datetime', y='3rd Place', ax=ax, style='.', alpha=.3, color='blue')
+     ax = card_occurances.plot(x='datetime', y='raw_rolling', ax=ax, style='-', alpha=1, color='red')
+     #ax = card_occurances.plot(x='datetime', y='d_raw_per_decks', ax=ax, style=':', alpha=1, color='red')
+
+     #set ticks every week
+     ax.xaxis.set_major_locator(mdates.WeekdayLocator())
+     #set major ticks format
+     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+     ax.grid()
+     plt.gcf().autofmt_xdate()
+     plt.show()
+ ```
