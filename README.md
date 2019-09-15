@@ -3,7 +3,7 @@
 An analysis of the effect of MTG tournaments on online card prices.
 ## - Christopher W. Evans, UMass Amherst Undergraduate
 
-For a better reading experience
+For a better reading experience visit [https://github.com/ChrisWeldon/MTGForecasting](https://github.com/ChrisWeldon/MTGForecasting)
 
 Arclight Phoenix
 ![png](https://raw.githubusercontent.com/ChrisWeldon/MTGForecasting/master/output_70_1.png)
